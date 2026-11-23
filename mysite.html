@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>БИОШЛАК // NECROFORGE 2.0 — Биопанк FPS в браузере</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg: #050705;
+    --bg-card: #0b0e0b;
+    --bg-card-hover: #101610;
+    --border: rgba(130, 170, 118, 0.18);
+    --border-strong: rgba(158, 255, 77, 0.45);
+    --text: #eef5ec;
+    --muted: #8a9987;
+    --lime: #9eff4d;      /* Кислотный акцент как в HUD игры */
+    --cyan: #4de3ff;      /* Био-крюк и броня */
+    --orange: #ff6a26;    /* Доменная Печь и опасность */
+    --font-display: 'Unbounded', 'Arial Black', sans-serif;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  .container {
+    width: min(1140px, 92vw);
+    margin: 0 auto;
+  }
+
+  /* =========================================================
+     1. ШАПКА (как в референсе: логотип слева, время + меню справа)
+     ========================================================= */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4vw;
+    background: rgba(5, 7, 5, 0.82);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(158, 255, 77, 0.12);
+  }
+
+  .brand {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-dot {
+    width: 9px; height: 9px;
+    background: var(--lime);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--lime);
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .sector-clock {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1.2px;
+  }
+
+  .menu-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 40px; height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .menu-btn:hover {
+    border-color: var(--lime);
+    background: rgba(158, 255, 77, 0.08);
+  }
+  .menu-btn span {
+    width: 18px; height: 2px;
+    background: var(--text);
+    transition: transform 0.2s;
+  }
+
+  /* Выпадающее меню */
+  .nav-drawer {
+    position: fixed;
+    top: 72px; right: 4vw;
+    z-index: 60;
+    width: 260px;
+    background: #0c100c;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 12px;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
+  }
+  .nav-drawer.open { display: flex; }
+  .nav-drawer a {
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-drawer a:hover {
+    background: rgba(158, 255, 77, 0.12);
+    color: var(--lime);
+  }
+  .nav-drawer .nav-play {
+    margin-top: 6px;
+    background: var(--lime);
+    color: #060905;
+    font-weight: 700;
+    text-align: center;
+  }
+  .nav-drawer .nav-play:hover {
+    background: #b6ff75;
+    color: #050705;
+  }
+
+  /* =========================================================
+     2. HERO-СЕКЦИЯ (как в референсе: мягкий градиент + крупный заголовок)
+     ========================================================= */
+  .hero {
+    position: relative;
+    min-height: 86vh;
+    padding: 130px 0 80px;
+    display: flex;
+    align-items: center;
+    background:
+      radial-gradient(ellipse 75% 60% at 50% 25%, rgba(65, 108, 42, 0.24), transparent 70%),
+      radial-gradient(ellipse 55% 45% at 75% 35%, rgba(255, 106, 38, 0.10), transparent 70%),
+      linear-gradient(180deg, #121712 0%, #050705 100%);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  /* Фоновый водяной знак как на референсе */
+  .hero-watermark {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: Georgia, serif;
+    font-size: clamp(64px, 11vw, 150px);
+    color: rgba(255, 255, 255, 0.035);
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .breadcrumb {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 18px;
+    text-transform: uppercase;
+  }
+  .breadcrumb span { color: var(--lime); }
+
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: clamp(32px, 6.2vw, 72px);
+    font-weight: 900;
+    line-height: 1.06;
+    letter-spacing: -1px;
+    margin: 0 0 22px;
+    text-transform: uppercase;
+  }
+  .hero-title .accent {
+    display: block;
+    color: var(--lime);
+    text-shadow: 0 0 36px rgba(158, 255, 77, 0.35);
+  }
+
+  .hero-desc {
+    max-width: 580px;
+    font-size: 16px;
+    color: #b4c2b0;
+    margin: 0 0 32px;
+  }
+
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 26px;
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform 0.14s, box-shadow 0.2s, background 0.2s, border-color 0.2s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+
+  .btn-primary {
+    background: var(--lime);
+    color: #060905;
+    box-shadow: 0 0 26px rgba(158, 255, 77, 0.32);
+  }
+  .btn-primary:hover {
+    background: #b5ff73;
+    box-shadow: 0 0 34px rgba(158, 255, 77, 0.5);
+  }
+
+  .btn-ghost {
+    background: rgba(15, 20, 15, 0.85);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  /* =========================================================
+     3. РАЗДЕЛИТЕЛЬНАЯ ПОЛОСА-ПИЛЮЛЯ (как "OUR STORY" в референсе)
+     ========================================================= */
+  .section { padding: 72px 0; }
+
+  .pill-bar {
+    width: 100%;
+    padding: 10px 20px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(14, 18, 14, 0.75);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .pill-bar b { color: var(--lime); }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: clamp(26px, 4vw, 44px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 32px;
+    text-transform: uppercase;
+  }
+
+  /* =========================================================
+     4. БЛОК ОПИСАНИЯ + НЕОНОВАЯ КАРТОЧКА СПРАВА (2 колонки)
+     ========================================================= */
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 36px;
+    align-items: center;
+  }
+
+  .about-text p {
+    color: #b7c4b3;
+    font-size: 15px;
+    margin: 0 0 16px;
+  }
+  .about-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .stat-chip {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .stat-chip strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--lime);
+  }
+  .stat-chip span {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Правая неоновая карточка (аналог фиолетовой (W) из референса) */
+  .neon-card {
+    background: radial-gradient(circle at center, rgba(110, 210, 45, 0.22) 0%, #090c09 70%);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 46px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-shadow: inset 0 0 50px rgba(158, 255, 77, 0.08);
+  }
+  .neon-ring {
+    width: 170px;
+    height: 170px;
+    border-radius: 50%;
+    border: 4px solid #d5ff9e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+      0 0 24px rgba(158, 255, 77, 0.75),
+      inset 0 0 24px rgba(158, 255, 77, 0.5);
+    margin-bottom: 20px;
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+  .neon-letter {
+    font-family: var(--font-display);
+    font-size: 70px;
+    font-weight: 900;
+    color: #f3ffe6;
+    text-shadow: 0 0 22px var(--lime);
+    line-height: 1;
+  }
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 24px rgba(158, 255, 77, 0.65), inset 0 0 20px rgba(158, 255, 77, 0.45); }
+    50% { box-shadow: 0 0 42px rgba(158, 255, 77, 0.95), inset 0 0 32px rgba(158, 255, 77, 0.65); }
+  }
+  .neon-caption {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--cyan);
+    letter-spacing: 1.5px;
+  }
+
+  /* =========================================================
+     5. ПОЧЕМУ СТОИТ ИГРАТЬ (4 карточки)
+     ========================================================= */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px;
+    transition: border-color 0.2s, transform 0.15s, background 0.2s;
+  }
+  .feature-card:hover {
+    border-color: var(--lime);
+    background: var(--bg-card-hover);
+    transform: translateY(-3px);
+  }
+  .feature-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(158, 255, 77, 0.1);
+    color: var(--lime);
+    border: 1px solid rgba(158, 255, 77, 0.25);
+    margin-bottom: 14px;
+  }
+  .feature-card.cyan .feature-tag {
+    background: rgba(77, 227, 255, 0.1);
+    color: var(--cyan);
+    border-color: rgba(77, 227, 255, 0.3);
+  }
+  .feature-card.orange .feature-tag {
+    background: rgba(255, 106, 38, 0.12);
+    color: var(--orange);
+    border-color: rgba(255, 106, 38, 0.35);
+  }
+  .feature-card h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    margin: 0 0 10px;
+  }
+  .feature-card p {
+    margin: 0;
+    font-size: 14px;
+    color: #a9b8a5;
+  }
+
+  /* =========================================================
+     6. СКРИНШОТЫ ИГРЫ + ЛАЙТБОКС
+     ========================================================= */
+  .screens-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .screen-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .screen-card:hover {
+    border-color: var(--cyan);
+    transform: translateY(-3px);
+  }
+  .screen-img-wrap {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: #0d120d;
+    overflow: hidden;
+  }
+  .screen-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.35s;
+  }
+  .screen-card:hover img { transform: scale(1.04); }
+  .screen-zoom-badge {
+    position: absolute;
+    right: 12px; bottom: 12px;
+    background: rgba(5, 7, 5, 0.85);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .screen-meta {
+    padding: 16px 20px;
+  }
+  .screen-meta h4 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    color: var(--text);
+  }
+  .screen-meta p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* Модальное окно увеличения фото */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(3, 5, 3, 0.92);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox-inner {
+    max-width: 1050px;
+    width: 100%;
+    position: relative;
+  }
+  .lightbox-inner img {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid var(--border-strong);
+    display: block;
+  }
+  .lightbox-close {
+    position: absolute;
+    top: -44px; right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  /* =========================================================
+     7. ИНТЕРАКТИВНЫЕ ВКЛАДКИ: АРСЕНАЛ / ЛОКАЦИИ
+     ========================================================= */
+  .tabs {
+    display: inline-flex;
+    gap: 8px;
+    padding: 5px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab-btn.active {
+    background: var(--lime);
+    color: #060905;
+  }
+
+  .catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .catalog-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .catalog-item .num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--orange);
+    margin-bottom: 6px;
+  }
+  .catalog-item h4 {
+    margin: 0 0 6px;
+    font-size: 16px;
+  }
+  .catalog-item p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* =========================================================
+     8. DISCORD И TELEGRAM + ФУТЕР
+     ========================================================= */
+  .social-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+  .social-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .social-card h3 {
+    margin: 0 0 4px;
+    font-family: var(--font-display);
+    font-size: 18px;
+  }
+  .social-handle {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--cyan);
+  }
+  .btn-discord {
+    background: #5865F2;
+    color: #fff;
+  }
+  .btn-discord:hover {
+    background: #6c78ff;
+    box-shadow: 0 0 22px rgba(88, 101, 242, 0.45);
+  }
+  .btn-telegram {
+    background: #229ED9;
+    color: #fff;
+  }
+  .btn-telegram:hover {
+    background: #33b0ec;
+    box-shadow: 0 0 22px rgba(34, 158, 217, 0.45);
+  }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Всплывающее уведомление (Toast) */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #101810;
+    border: 1px solid var(--lime);
+    color: var(--lime);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 120;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width: 860px) {
+    .about-grid, .features-grid, .screens-grid, .catalog-grid, .social-grid {
+      grid-template-columns: 1fr;
+    }
+    .about-stats { grid-template-columns: 1fr 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
+  <header class="topbar">
+    <a href="#top" class="brand">
+      <span class="brand-dot"></span>
+      <span>NECROFORGE 2.0</span>
+    </a>
+    <div class="topbar-right">
+      <span class="sector-clock" id="sector-clock">SECTOR 05 // ONLINE</span>
+      <button class="menu-btn" id="menu-btn" aria-label="Открыть меню">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <nav class="nav-drawer" id="nav-drawer">
+    <a href="#about">01 // Об игре</a>
+    <a href="#why-play">02 // Почему стоит играть</a>
+    <a href="#screenshots">03 // Скриншоты</a>
+    <a href="#arsenal">04 // Арсенал и локации</a>
+    <a href="#community">05 // Discord и Telegram</a>
+    <a href="BioLabs_v2.html" class="nav-play">▶ ЗАПУСТИТЬ ИГРУ</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="top">
+    <div class="hero-watermark">BIOSHLAK</div>
+    <div class="container hero-content">
+      <div class="breadcrumb">ГЛАВНАЯ — <span>БИОШЛАК // NECROFORGE 2.0</span></div>
+      <h1 class="hero-title">
+        ПРОРВИСЬ СКВОЗЬ АД
+        <span class="accent">МУТАНТОВ И ПЕЧИ</span>
+      </h1>
+      <p class="hero-desc">
+        Быстрый олдскульный биопанк-шутер от первого лица прямо в браузере.
+        5 открытых арен, 6 видов мутировавшего оружия, реактивный крюк, добивания
+        Glory Kill и финальный босс «Доменная Печь».
+      </p>
+      <div class="btn-row">
+        <a href="BioLabs_v2.html" class="btn btn-primary" id="btn-play-hero">▶ Играть в браузере</a>
+        <a href="#why-play" class="btn btn-ghost">Почему стоит играть ↓</a>
+        <a href="#screenshots" class="btn btn-ghost">Смотреть кадры</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 01. ОБ ИГРЕ -->
+  <section class="section" id="about">
+    <div class="container">
+      <div class="pill-bar"><b>01 //</b> ОБ ИГРЕ</div>
+      <h2 class="section-title">СОЗДАНО НА ЧИСТОМ ХАРДКОРЕ,<br>ЗАПУСКАЕТСЯ ЗА СЕКУНДУ</h2>
+
+      <div class="about-grid">
+        <div class="about-text">
+          <p>
+            <strong>БИОШЛАК // NECROFORGE 2.0</strong> — это динамичный 3D-шутер на WebGL,
+            вдохновлённый классическим DOOM и современными арена-шутерами.
+            Никаких загрузок и установок — открывай файл и врывайся в бой с живым
+            реагирующим портретом оперативника в HUD и процедурным звуком.
+          </p>
+          <p>
+            Сражайся волнами на заражённых промышленных аренах, плавь броню танков кислотой,
+            летай между платформами на Био-крюке и прокачивай тело в межволновой
+            лавке «Био-Верстак».
+          </p>
+
+          <div class="about-stats">
+            <div class="stat-chip">
+              <strong>5</strong>
+              <span>Открытых локаций</span>
+            </div>
+            <div class="stat-chip">
+              <strong>6</strong>
+              <span>Пушек x 2 режима</span>
+            </div>
+            <div class="stat-chip">
+              <strong>0 МБ</strong>
+              <span>Без скачивания</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="neon-card">
+          <div class="neon-ring">
+            <span class="neon-letter">Б</span>
+          </div>
+          <div class="neon-caption">HTML5 // THREE.JS // WEB AUDIO</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02. ПОЧЕМУ СТОИТ ИГРАТЬ -->
+  <section class="section" id="why-play">
+    <div class="container">
+      <div class="pill-bar"><b>02 //</b> ПОЧЕМУ СТОИТ ИГРАТЬ</div>
+      <h2 class="section-title">ЧЕСТНЫЙ ДРАЙВ И МЯСНАЯ ТАКТИКА</h2>
+
+      <div class="features-grid">
+        <div class="feature-card cyan">
+          <div class="feature-tag">МОБИЛЬНОСТЬ [E / SHIFT / ПРОБЕЛ]</div>
+          <h3>Бешеный паркур и Био-крюк</h3>
+          <p>
+            Двойной прыжок, воздушные рывки с перезарядкой на прицеле,
+            кислотные гейзеры-трамплины и притягивающий Био-крюк к парящим
+            якорям — стоять на месте здесь смертельно.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-tag">ДОБИВАНИЯ [F]</div>
+          <h3>Glory Kill и живой HUD-портрет</h3>
+          <p>
+            Раненые мутанты загораются оранжевым — нажми [F], чтобы эффектно
+            добить врага и выбить из него HP с боеприпасами. А твой оперативник
+            в HUD следит за мышкой, скалится и получает трещины на шлеме.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-tag">ПРОКАЧКА [B]</div>
+          <h3>Лавка «Био-Верстак» между волнами</h3>
+          <p>
+            Собирай зелёные кристаллы Био-валюты и трать их на усиление ног,
+            второй заряд рывка, хитиновую броню и открытие разрушительного
+            арсенала. Прогресс сохраняется автоматически.
+          </p>
+        </div>
+
+        <div class="feature-card orange">
+          <div class="feature-tag">ФИНАЛ КАМПАНИИ</div>
+          <h3>Босс «Доменная Печь» и слоу-мо эвакуация</h3>
+          <p>
+            Уворачивайся от цепного крюка босса, подставляй под него колонны,
+            чтобы оглушить на 3 секунды, расплавь шлаковую броню Желчеметом
+            и улетай на вертолёте с гранатой в замедленном времени.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03. СКРИНШОТЫ -->
+  <section class="section" id="screenshots">
+    <div class="container">
+      <div class="pill-bar"><b>03 //</b> КАДРЫ ИЗ ИГРЫ</div>
+      <h2 class="section-title">КАК ЭТО ВЫГЛЯДИТ В БОЮ</h2>
+
+      <div class="screens-grid">
+        <div class="screen-card" data-caption="Ржавый Двор / Кислотные арены — парящие якоря, гейзеры и Желчемет">
+          <div class="screen-img-wrap">
+            <img src="screen1.png" alt="Скриншот игры БИОШЛАК — ночная промзона" data-fallback="1" />
+            <span class="screen-zoom-badge">🔍 Увеличить</span>
+          </div>
+          <div class="screen-meta">
+            <h4>Индустриальные руины и кислотное небо</h4>
+            <p>Парящие якоря для Био-крюка, гейзеры, живой портрет и кислотный Желчемет.</p>
+          </div>
+        </div>
+
+        <div class="screen-card" data-caption="Радиоактивная Зима — захват цели на Био-крюк [E] и схватка с мутантами">
+          <div class="screen-img-wrap">
+            <img src="screen2.png" alt="Скриншот игры БИОШЛАК — Радиоактивная Зима" data-fallback="2" />
+            <span class="screen-zoom-badge">🔍 Увеличить</span>
+          </div>
+          <div class="screen-meta">
+            <h4>Радиоактивная Зима и захват цели</h4>
+            <p>Заснеженный полигон, скользкий лёд, светящиеся язвы врагов и притягивающий крюк [E].</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04. АРСЕНАЛ И ЛОКАЦИИ -->
+  <section class="section" id="arsenal">
+    <div class="container">
+      <div class="pill-bar"><b>04 //</b> АРСЕНАЛ И ЛОКАЦИИ</div>
+      <h2 class="section-title">ЧЕМ И ГДЕ КРОШИТЬ МУТАНТОВ</h2>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="weapons">АРСЕНАЛ (6 ПУШЕК)</button>
+        <button class="tab-btn" data-tab="levels">ЛОКАЦИИ (5 АРЕН)</button>
+      </div>
+
+      <div class="catalog-grid" id="catalog-grid"></div>
+    </div>
+  </section>
+
+  <!-- 05. СООБЩЕСТВО (DISCORD И TELEGRAM) -->
+  <section class="section" id="community">
+    <div class="container">
+      <div class="pill-bar"><b>05 //</b> СООБЩЕСТВО И СВЯЗЬ</div>
+      <h2 class="section-title">ПРИСОЕДИНЯЙСЯ И ПИШИ АВТОРУ</h2>
+
+      <div class="social-grid">
+        <div class="social-card">
+          <div>
+            <h3>DISCORD</h3>
+            <div class="social-handle" id="discord-handle-txt">Юз: _ds21</div>
+          </div>
+          <button class="btn btn-discord" id="btn-discord">Скопировать / Перейти</button>
+        </div>
+
+        <div class="social-card">
+          <div>
+            <h3>TELEGRAM</h3>
+            <div class="social-handle" id="tg-handle-txt">@your_telegram</div>
+          </div>
+          <a href="#" target="_blank" rel="noopener" class="btn btn-telegram" id="btn-telegram">Открыть Telegram</a>
+        </div>
+      </div>
+
+      <div style="margin-top: 32px; text-align: center;">
+        <a href="BioLabs_v2.html" class="btn btn-primary" style="padding: 16px 36px; font-size: 14px;">
+          ▶ НАЧАТЬ КАМПАНИЮ ПРЯМО СЕЙЧАС
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      БИОШЛАК // NECROFORGE 2.0 — БРАУЗЕРНЫЙ БИОПАНК-ШУТЕР НА THREE.JS
+    </div>
+  </footer>
+
+  <!-- ЛАЙТБОКС -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-inner">
+      <button class="lightbox-close" id="lightbox-close">ЗАКРЫТЬ [ESC]</button>
+      <img id="lightbox-img" src="" alt="Увеличенный скриншот" />
+    </div>
+  </div>
+
+  <!-- ТОСТ-УВЕДОМЛЕНИЕ -->
+  <div class="toast" id="toast"></div>
+
+<script>
+  // =========================================================================
+  // БЫСТРАЯ НАСТРОЙКА ТВОИХ ССЫЛОК (МЕНЯЙ ТОЛЬКО ЭТОТ БЛОК!)
+  // =========================================================================
+  const CONFIG = {
+    discordTag: '_ds21',
+    discordUrl: 'https://discord.gg/706897124012589208',
+    telegramHandle: '@Lesha0012',
+    telegramUrl: 'https://t.me/Lesha0012',
+    gameFile: 'BioLabs_v2.html'      // Имя файла с игрой
+  };
+
+  // Применяем ссылки из CONFIG ко всем кнопкам
+  document.getElementById('discord-handle-txt').innerText = 'Discord: ' + CONFIG.discordTag;
+  document.getElementById('tg-handle-txt').innerText = 'Telegram: ' + CONFIG.telegramHandle;
+  const tgBtn = document.getElementById('btn-telegram');
+  tgBtn.href = CONFIG.telegramUrl;
+  document.querySelectorAll('a[href="BioLabs_v2.html"]').forEach(a => a.href = CONFIG.gameFile);
+
+  // Живые часы в шапке (как в референсе)
+  function updateClock() {
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    document.getElementById('sector-clock').innerText = `SECTOR 05  ${hh}:${mm}`;
+  }
+  updateClock();
+  setInterval(updateClock, 15000);
+
+  // Тост-уведомление
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  // Кнопка Discord: копирует _ds21 и открывает ссылку, если она указана
+  document.getElementById('btn-discord').addEventListener('click', () => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(CONFIG.discordTag).catch(() => {});
+    }
+    if (CONFIG.discordUrl) {
+      window.open(CONFIG.discordUrl, '_blank', 'noopener');
+      showToast(`Ник ${CONFIG.discordTag} скопирован, открываю Discord!`);
+    } else {
+      showToast(`Ник Discord «${CONFIG.discordTag}» скопирован в буфер!`);
+    }
+  });
+
+  // Меню-бургер
+  const menuBtn = document.getElementById('menu-btn');
+  const navDrawer = document.getElementById('nav-drawer');
+  menuBtn.addEventListener('click', () => navDrawer.classList.toggle('open'));
+  navDrawer.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => navDrawer.classList.remove('open'));
+  });
+  document.addEventListener('click', (e) => {
+    if (!navDrawer.contains(e.target) && !menuBtn.contains(e.target)) {
+      navDrawer.classList.remove('open');
+    }
+  });
+
+  // Данные для вкладок «Арсенал / Локации»
+  const WEAPONS = [
+    { num: 'ОРУЖИЕ 01', name: 'Желчемет', desc: 'ЛКМ: кислотная картечь | ПКМ: ядовитая лужа. Лучшее средство для плавки шлаковой брони.' },
+    { num: 'ОРУЖИЕ 02', name: 'Хребторез', desc: 'ЛКМ: пробивной позвонок | ПКМ: одновременный подрыв всех застрявших костей.' },
+    { num: 'ОРУЖИЕ 03', name: 'Сердцебой', desc: 'ЛКМ: пулемёт (стреляет быстрее при низком HP) | ПКМ: режим «Адреналин».' },
+    { num: 'ОРУЖИЕ 04', name: 'Пиявка-Т', desc: 'ЛКМ: высасывающий паразит (дропает сферы HP) | ПКМ: личинка-мина.' },
+    { num: 'ОРУЖИЕ 05', name: 'Сварщик Плоти', desc: 'ЛКМ: луч (взрыв цели через 2 сек.) | ПКМ: шаровая молния с разрядами.' },
+    { num: 'ОРУЖИЕ 06', name: 'Аннигилятор-9', desc: 'ЛКМ: залп 3 ядерных спор | ПКМ: сингулярная мега-спора.' }
+  ];
+  const LEVELS = [
+    { num: 'ЛОКАЦИЯ 01', name: 'Ржавый Двор', desc: 'Промзона с мостиками и кислотным пеплом. Зомби-рабочие, Плевуны и Камикадзе.' },
+    { num: 'ЛОКАЦИЯ 02', name: 'Радиоактивная Зима', desc: 'Замёрзший полигон со снегопадом, скользким льдом и синими Крио-зомби.' },
+    { num: 'ЛОКАЦИЯ 03', name: 'Стеклянная Пустыня', desc: 'Песчаная буря, остовы танкеров и тяжёлые бронированные Мутанты-танки.' },
+    { num: 'ЛОКАЦИЯ 04', name: 'Кислотные Топи', desc: 'Узкие мостки над токсичной жижей, светящиеся споры и летающие Споровики.' },
+    { num: 'ЛОКАЦИЯ 05', name: 'Цитадель Печи', desc: 'Крыша реактора с 4 колоннами и Финальный Босс «Доменная Печь».' }
+  ];
+
+  const catalogGrid = document.getElementById('catalog-grid');
+  function renderCatalog(type) {
+    const items = type === 'weapons' ? WEAPONS : LEVELS;
+    catalogGrid.innerHTML = items.map(item => `
+      <div class="catalog-item">
+        <div class="num">${item.num}</div>
+        <h4>${item.name}</h4>
+        <p>${item.desc}</p>
+      </div>
+    `).join('');
+  }
+  renderCatalog('weapons');
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderCatalog(btn.dataset.tab);
+    });
+  });
+
+  // Авто-проверка .png / .jpg для скриншотов + аккуратная заглушка, если фото ещё не сохранены рядом
+  document.querySelectorAll('.screen-img-wrap img').forEach(img => {
+    img.addEventListener('error', function onErr() {
+      if (!this.dataset.triedJpg) {
+        this.dataset.triedJpg = '1';
+        this.src = this.src.replace('.png', '.jpg');
+        return;
+      }
+      const num = this.dataset.fallback || '1';
+      const svg = encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="800" height="450">
+          <rect width="100%" height="100%" fill="#0d130d"/>
+          <rect x="20" y="20" width="760" height="410" rx="16" fill="none" stroke="#4d7a36" stroke-dasharray="10 8" stroke-width="2"/>
+          <text x="50%" y="46%" fill="#9eff4d" font-family="monospace" font-size="24" text-anchor="middle">СКРИНШОТ #${num}</text>
+          <text x="50%" y="56%" fill="#8a9987" font-family="monospace" font-size="16" text-anchor="middle">Сохраните фото как screen${num}.png в папку с index.html</text>
+        </svg>
+      `);
+      this.src = 'data:image/svg+xml,' + svg;
+    });
+  });
+
+  // Лайтбокс для увеличения скриншотов
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightbox-img');
+  document.querySelectorAll('.screen-card').forEach(card => {
+    card.addEventListener('click', () => {
+      lightboxImg.src = card.querySelector('img').src;
+      lightbox.classList.add('open');
+    });
+  });
+  document.getElementById('lightbox-close').addEventListener('click', () => lightbox.classList.remove('open'));
+  lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.classList.remove('open'); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') lightbox.classList.remove('open'); });
+</script>
+</body>
+</html>
